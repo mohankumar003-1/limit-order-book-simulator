@@ -8,8 +8,8 @@ class OrderBook {
 
     private :
     
-    std::map<float,std::deque<Order>,std::greater<float>> bids;
-    std::map<float,std::deque<Order>> asks;
+    std::map<float,std::deque<Order*>,std::greater<float>> bids;
+    std::map<float,std::deque<Order*>> asks;
     std::unordered_map<long, Order> order_lookup;
 
     public:
