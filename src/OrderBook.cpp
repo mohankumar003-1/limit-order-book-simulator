@@ -49,6 +49,11 @@ void OrderBook::cancel(long order_id) {
     order_lookup.erase(lookup_it); 
 }
 
+const Order* OrderBook::get_order(long order_id) const {
+    auto lookup_it = order_lookup.find(order_id);
+    return lookup_it == order_lookup.end() ? nullptr : &lookup_it->second;
+}
+
 void OrderBook::display() const {
     std::cout << "\nASKS\n";
     for (const auto& [price,orders]: asks) {
