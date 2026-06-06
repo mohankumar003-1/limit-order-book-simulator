@@ -22,4 +22,7 @@ class OrderBook {
     float spread() const;
     void cancel(long order_id);
     const Order* get_order(long order_id) const;
+    Order* get_order(long order_id);
+    Order* best_ask_order();
+    Order* best_bid_order();
 };

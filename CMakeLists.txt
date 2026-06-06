@@ -10,6 +10,7 @@ set(SOURCE_FILES
     src/Order.cpp
     src/OrderBook.cpp
     src/HttpServer.cpp
+    src/Trade.cpp
 )
 
 set(TEST_SOURCE_FILES

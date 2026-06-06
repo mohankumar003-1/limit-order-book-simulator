@@ -1,4 +1,5 @@
 #include "HttpServer.hpp"
+#include "Trade.hpp"
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <iostream>
@@ -287,7 +288,14 @@ void HttpServer::start(int port)
                     try
                     {
                         Order newOrder(*userId, *action, *price, *quantity);
-                        book.add_order(newOrder);
+                        Trade trade;
+                        if (newOrder.getUserAction() == Action::BID)
+                            trade.match_bid(newOrder, book);
+                        else
+                            trade.match_ask(newOrder, book);
+
+                        if (newOrder.getQuantity() > 0)
+                            book.add_order(newOrder);
 
                         std::ostringstream body;
                         body << "{";

@@ -54,6 +54,25 @@ const Order* OrderBook::get_order(long order_id) const {
     return lookup_it == order_lookup.end() ? nullptr : &lookup_it->second;
 }
 
+Order* OrderBook::get_order(long order_id) {
+    auto lookup_it = order_lookup.find(order_id);
+    return lookup_it == order_lookup.end() ? nullptr : &lookup_it->second;
+}
+
+Order* OrderBook::best_ask_order() {
+    if (asks.empty())
+        return nullptr;
+    auto &level = asks.begin()->second;
+    return level.empty() ? nullptr : level.front();
+}
+
+Order* OrderBook::best_bid_order() {
+    if (bids.empty())
+        return nullptr;
+    auto &level = bids.begin()->second;
+    return level.empty() ? nullptr : level.front();
+}
+
 void OrderBook::display() const {
     std::cout << "\nASKS\n";
     for (const auto& [price,orders]: asks) {

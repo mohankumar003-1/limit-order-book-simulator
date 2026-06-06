@@ -2,6 +2,7 @@
 
 #include <string>
 #include <chrono>
+#include <stdexcept>
 #include "Types.hpp"
 
 class Order {
@@ -34,6 +35,11 @@ explicit Order(const std::string& id, Action act, float p, int q)
     Action getUserAction() const { return user_action; }
     float getPrice() const { return price; }
     int getQuantity() const { return quantity; }
+    void reduceQuantity(int amount) {
+        if (amount < 0 || amount > quantity)
+            throw std::invalid_argument("Invalid quantity reduction");
+        quantity -= amount;
+    }
     long getTimestamp() const {return timestamp;}
     long getOrderId() const {return order_id;}
 
