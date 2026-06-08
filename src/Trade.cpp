@@ -17,12 +17,12 @@ void Trade::match_bid(Order& order, OrderBook &book) {
         Order* ask = book.best_ask_order();
         if (!ask)
             break;
-
+        Trade trade;
         int traded_qty = std::min(order.getQuantity(), ask->getQuantity());
-        buy_order_id = order.getOrderId();
-        sell_order_id = ask->getOrderId();
-        quantity = traded_qty;
-        price = ask->getPrice();
+        trade.setBuyOrderId(order.getOrderId());
+        trade.setSellOrderId(ask->getOrderId());
+        trade.setQuantity(traded_qty);
+        trade.setPrice(ask->getPrice());
 
         std::cout << "Trade executed: buy=" << buy_order_id
                   << " sell=" << sell_order_id
@@ -59,10 +59,12 @@ void Trade::match_ask(Order& order, OrderBook &book) {
             break;
 
         int traded_qty = std::min(order.getQuantity(), bid->getQuantity());
-        buy_order_id = bid->getOrderId();
-        sell_order_id = order.getOrderId();
-        quantity = traded_qty;
-        price = bid->getPrice();
+
+        Trade trade;
+        trade.setBuyOrderId(order.getOrderId());
+        trade.setSellOrderId(bid->getOrderId());
+        trade.setQuantity(traded_qty);
+        trade.setPrice(bid->getPrice());
 
         std::cout << "Trade executed: buy=" << buy_order_id
                   << " sell=" << sell_order_id
