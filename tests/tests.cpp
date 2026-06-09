@@ -134,6 +134,23 @@ void test_cancel_nonexistent()
     std::cout << "✓ test_cancel_nonexistent\n";
 }
 
+void test_modify_order_price_and_quantity()
+{
+    OrderBook book;
+    Order order("alice", Action::BID, 100, 10);
+    long id = order.getOrderId();
+
+    book.add_order(order);
+    book.modify(book.get_order(id), 110.0f, 25);
+
+    EXPECT_TRUE(book.best_bid() == 110.0f);
+    EXPECT_TRUE(book.get_order(id) != nullptr);
+    EXPECT_TRUE(book.get_order(id)->getPrice() == 110.0f);
+    EXPECT_TRUE(book.get_order(id)->getQuantity() == 25);
+
+    std::cout << "✓ test_modify_order_price_and_quantity\n";
+}
+
 int main()
 {
     test_empty_book();
@@ -146,6 +163,7 @@ int main()
     test_spread_empty_side();
     test_cancel();
     test_cancel_nonexistent();
+    test_modify_order_price_and_quantity();
 
     std::cout << "\nAll tests passed\n";
 }
