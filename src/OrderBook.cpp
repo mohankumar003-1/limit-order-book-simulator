@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include "OrderBook.hpp"
 
@@ -97,6 +98,39 @@ void OrderBook::display() const {
     std::cout<<"Spread :"<<spread()<<"\n";
 }
 
+void OrderBook::modify(Order* order, float price, long quantity)
+{
+    if (!order)
+        throw std::out_of_range("modify: order not found");
+
+    if (price < 0.0f)
+        throw std::invalid_argument("Price cannot be negative");
+    if (quantity <= 0)
+        throw std::invalid_argument("Quantity must be positive");
+
+    const float oldPrice = order->getPrice();
+    auto action = order->getUserAction();
+    long orderId = order->getOrderId();
+
+    if (oldPrice != price)
+    {
+        if (action == Action::BID)
+            remove_from_level(bids, oldPrice, orderId);
+        else
+            remove_from_level(asks, oldPrice, orderId);
+    }
+
+    order->setPrice(price);
+    order->setQuantity(quantity);
+
+    if (oldPrice != price)
+    {
+        if (action == Action::BID)
+            bids[price].push_back(order);
+        else
+            asks[price].push_back(order);
+    }
+}
 
 //Helpers
 

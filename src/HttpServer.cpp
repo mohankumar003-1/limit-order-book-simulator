@@ -319,6 +319,68 @@ void HttpServer::start(int port)
                 }
             }
         }
+        else if (method == "PUT" && path.rfind("/order", 0) == 0)
+        {
+            std::string bodyText = getRequestBody(request);
+            if (bodyText.empty())
+            {
+                std::string body = "{\"error\":\"missing request body\"}";
+                std::string response = makeJsonResponse(400, "Bad Request", body);
+                send(client, response.c_str(), static_cast<int>(response.size()), 0);
+            }
+            else
+            {
+                auto orderId = extractOrderId(path, query);
+                if (!orderId)
+                    orderId = parseJsonFloatField(bodyText, "order_id");
+
+                auto price = parseJsonFloatField(bodyText, "price");
+                auto quantity = parseJsonIntField(bodyText, "quantity");
+
+                if (!orderId || !price || !quantity)
+                {
+                    std::string body = "{\"error\":\"invalid modify payload\"}";
+                    std::string response = makeJsonResponse(400, "Bad Request", body);
+                    send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                }
+                else
+                {
+                    Order *order = book.get_order(*orderId);
+                    if (!order)
+                    {
+                        std::string body = "{\"error\":\"order not found\"}";
+                        std::string response = makeJsonResponse(404, "Not Found", body);
+                        send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                    }
+                    else
+                    {
+                        try
+                        {
+                            book.modify(order, *price, *quantity);
+
+                            std::ostringstream body;
+                            body << "{";
+                            body << "\"status\":\"updated\",";
+                            body << "\"order_id\":" << order->getOrderId() << ",";
+                            body << "\"user_id\":\"" << escapeJson(order->getUserId()) << "\",";
+                            body << "\"action\":\"" << actionToString(order->getUserAction()) << "\",";
+                            body << "\"price\":" << order->getPrice() << ",";
+                            body << "\"quantity\":" << order->getQuantity();
+                            body << "}";
+
+                            std::string response = makeJsonResponse(200, "OK", body.str());
+                            send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                        }
+                        catch (const std::exception &)
+                        {
+                            std::string body = "{\"error\":\"invalid modify payload\"}";
+                            std::string response = makeJsonResponse(400, "Bad Request", body);
+                            send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                        }
+                    }
+                }
+            }
+        }
         else if ((method == "GET" || method == "DELETE") && path.rfind("/order", 0) == 0)
         {
             auto orderId = extractOrderId(path, query);

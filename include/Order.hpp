@@ -42,5 +42,7 @@ explicit Order(const std::string& id, Action act, float p, int q)
     }
     long getTimestamp() const {return timestamp;}
     long getOrderId() const {return order_id;}
+    void setPrice(float price)  { this->price = price; }
+    void setQuantity(long quantity) {this->quantity = quantity;}
 
 };

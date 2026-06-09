@@ -21,6 +21,7 @@ class OrderBook {
     float best_ask() const;
     float spread() const;
     void cancel(long order_id);
+    void modify(Order* order , float price, long quantity);
     const Order* get_order(long order_id) const;
     Order* get_order(long order_id);
     Order* best_ask_order();
