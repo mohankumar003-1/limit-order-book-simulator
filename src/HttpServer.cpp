@@ -331,13 +331,20 @@ void HttpServer::start(int port)
             else
             {
                 auto orderId = extractOrderId(path, query);
-                if (!orderId)
-                    orderId = parseJsonFloatField(bodyText, "order_id");
+                std::optional<long> orderIdValue;
+                if (orderId)
+                    orderIdValue = *orderId;
+                else
+                {
+                    auto bodyOrderId = parseJsonFloatField(bodyText, "order_id");
+                    if (bodyOrderId)
+                        orderIdValue = static_cast<long>(*bodyOrderId);
+                }
 
                 auto price = parseJsonFloatField(bodyText, "price");
                 auto quantity = parseJsonIntField(bodyText, "quantity");
 
-                if (!orderId || !price || !quantity)
+                if (!orderIdValue || !price || !quantity)
                 {
                     std::string body = "{\"error\":\"invalid modify payload\"}";
                     std::string response = makeJsonResponse(400, "Bad Request", body);
@@ -345,19 +352,19 @@ void HttpServer::start(int port)
                 }
                 else
                 {
-                    Order *order = book.get_order(*orderId);
-                    if (!order)
+                    try
                     {
-                        std::string body = "{\"error\":\"order not found\"}";
-                        std::string response = makeJsonResponse(404, "Not Found", body);
-                        send(client, response.c_str(), static_cast<int>(response.size()), 0);
-                    }
-                    else
-                    {
-                        try
+                        long id = *orderIdValue;
+                        book.modify(id, *price, *quantity);
+                        auto order = book.get_order_copy(id);
+                        if (!order)
                         {
-                            book.modify(order, *price, *quantity);
-
+                            std::string body = "{\"error\":\"order not found\"}";
+                            std::string response = makeJsonResponse(404, "Not Found", body);
+                            send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                        }
+                        else
+                        {
                             std::ostringstream body;
                             body << "{";
                             body << "\"status\":\"updated\",";
@@ -371,12 +378,12 @@ void HttpServer::start(int port)
                             std::string response = makeJsonResponse(200, "OK", body.str());
                             send(client, response.c_str(), static_cast<int>(response.size()), 0);
                         }
-                        catch (const std::exception &)
-                        {
-                            std::string body = "{\"error\":\"invalid modify payload\"}";
-                            std::string response = makeJsonResponse(400, "Bad Request", body);
-                            send(client, response.c_str(), static_cast<int>(response.size()), 0);
-                        }
+                    }
+                    catch (const std::exception &)
+                    {
+                        std::string body = "{\"error\":\"invalid modify payload\"}";
+                        std::string response = makeJsonResponse(400, "Bad Request", body);
+                        send(client, response.c_str(), static_cast<int>(response.size()), 0);
                     }
                 }
             }
@@ -392,7 +399,7 @@ void HttpServer::start(int port)
             }
             else if (method == "GET")
             {
-                const Order *order = book.get_order(*orderId);
+                auto order = book.get_order_copy(*orderId);
                 if (!order)
                 {
                     std::string body = "{\"error\":\"order not found\"}";

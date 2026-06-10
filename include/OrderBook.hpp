@@ -2,6 +2,8 @@
 #include <map>
 #include <deque>
 #include <unordered_map>
+#include <mutex>
+#include <optional>
 
 #include "Order.hpp"
 
@@ -12,6 +14,7 @@ class OrderBook {
     std::map<float,std::deque<Order*>,std::greater<float>> bids;
     std::map<float,std::deque<Order*>> asks;
     std::unordered_map<long, Order> order_lookup;
+    mutable std::mutex mutex;
 
     public:
 
@@ -21,7 +24,8 @@ class OrderBook {
     float best_ask() const;
     float spread() const;
     void cancel(long order_id);
-    void modify(Order* order , float price, long quantity);
+    void modify(long order_id, float price, long quantity);
+    std::optional<Order> get_order_copy(long order_id) const;
     const Order* get_order(long order_id) const;
     Order* get_order(long order_id);
     Order* best_ask_order();

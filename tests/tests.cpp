@@ -141,7 +141,7 @@ void test_modify_order_price_and_quantity()
     long id = order.getOrderId();
 
     book.add_order(order);
-    book.modify(book.get_order(id), 110.0f, 25);
+    book.modify(id, 110.0f, 25);
 
     EXPECT_TRUE(book.best_bid() == 110.0f);
     EXPECT_TRUE(book.get_order(id) != nullptr);
