@@ -6,6 +6,7 @@
 #include <sstream>
 #include <optional>
 #include <cctype>
+#include <chrono>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -178,6 +179,26 @@ static std::optional<Action> parseJsonActionField(const std::string &json, const
     return std::nullopt;
 }
 
+static std::string addTimeNsField(std::string body, long long timeNs)
+{
+    if (body.size() >= 2 && body.front() == '{' && body.back() == '}')
+    {
+        if (body.size() == 2)
+        {
+            body.insert(body.size() - 1, "\"time_ns\":" + std::to_string(timeNs));
+        }
+        else
+        {
+            body.insert(body.size() - 1, ",\"time_ns\":" + std::to_string(timeNs));
+        }
+    }
+    else
+    {
+        body = "{\"time_ns\":" + std::to_string(timeNs) + ",\"result\":" + body + "}";
+    }
+    return body;
+}
+
 static std::string makeJsonResponse(int statusCode, const std::string &statusText, const std::string &body)
 {
     std::ostringstream response;
@@ -242,6 +263,15 @@ void HttpServer::start(int port)
         requestStream >> method >> fullPath;
 
         auto [path, query] = splitPathAndQuery(fullPath);
+        auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto sendTimedResponse = [&](int statusCode, const std::string &statusText, const std::string &body) {
+            auto endTime = std::chrono::high_resolution_clock::now();
+            long long elapsedNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
+            std::string timedBody = addTimeNsField(body, elapsedNs);
+            std::string response = makeJsonResponse(statusCode, statusText, timedBody);
+            send(client, response.c_str(), static_cast<int>(response.size()), 0);
+        };
 
         if (method == "GET" && path == "/top")
         {
@@ -252,14 +282,12 @@ void HttpServer::start(int port)
             body << "\"spread\":" << book.spread();
             body << "}";
 
-            std::string response = makeJsonResponse(200, "OK", body.str());
-            send(client, response.c_str(), static_cast<int>(response.size()), 0);
+            sendTimedResponse(200, "OK", body.str());
         }
         else if (method == "GET" && path == "/health")
         {
             std::string body = "{\"status\":\"healthy\"}";
-            std::string response = makeJsonResponse(200, "OK", body);
-            send(client, response.c_str(), static_cast<int>(response.size()), 0);
+            sendTimedResponse(200, "OK", body);
         }
         else if (method == "POST" && path == "/order")
         {
@@ -267,8 +295,7 @@ void HttpServer::start(int port)
             if (bodyText.empty())
             {
                 std::string body = "{\"error\":\"missing request body\"}";
-                std::string response = makeJsonResponse(400, "Bad Request", body);
-                send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                sendTimedResponse(400, "Bad Request", body);
             }
             else
             {
@@ -280,8 +307,7 @@ void HttpServer::start(int port)
                 if (!userId || !action || !price || !quantity)
                 {
                     std::string body = "{\"error\":\"invalid order payload\"}";
-                    std::string response = makeJsonResponse(400, "Bad Request", body);
-                    send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                    sendTimedResponse(400, "Bad Request", body);
                 }
                 else
                 {
@@ -307,14 +333,12 @@ void HttpServer::start(int port)
                         body << "\"quantity\":" << newOrder.getQuantity();
                         body << "}";
 
-                        std::string response = makeJsonResponse(201, "Created", body.str());
-                        send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                        sendTimedResponse(201, "Created", body.str());
                     }
                     catch (const std::exception &)
                     {
                         std::string body = "{\"error\":\"invalid order payload\"}";
-                        std::string response = makeJsonResponse(400, "Bad Request", body);
-                        send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                        sendTimedResponse(400, "Bad Request", body);
                     }
                 }
             }
@@ -325,8 +349,7 @@ void HttpServer::start(int port)
             if (bodyText.empty())
             {
                 std::string body = "{\"error\":\"missing request body\"}";
-                std::string response = makeJsonResponse(400, "Bad Request", body);
-                send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                sendTimedResponse(400, "Bad Request", body);
             }
             else
             {
@@ -347,8 +370,7 @@ void HttpServer::start(int port)
                 if (!orderIdValue || !price || !quantity)
                 {
                     std::string body = "{\"error\":\"invalid modify payload\"}";
-                    std::string response = makeJsonResponse(400, "Bad Request", body);
-                    send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                    sendTimedResponse(400, "Bad Request", body);
                 }
                 else
                 {
@@ -360,8 +382,7 @@ void HttpServer::start(int port)
                         if (!order)
                         {
                             std::string body = "{\"error\":\"order not found\"}";
-                            std::string response = makeJsonResponse(404, "Not Found", body);
-                            send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                            sendTimedResponse(404, "Not Found", body);
                         }
                         else
                         {
@@ -375,15 +396,13 @@ void HttpServer::start(int port)
                             body << "\"quantity\":" << order->getQuantity();
                             body << "}";
 
-                            std::string response = makeJsonResponse(200, "OK", body.str());
-                            send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                            sendTimedResponse(200, "OK", body.str());
                         }
                     }
                     catch (const std::exception &)
                     {
                         std::string body = "{\"error\":\"invalid modify payload\"}";
-                        std::string response = makeJsonResponse(400, "Bad Request", body);
-                        send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                        sendTimedResponse(400, "Bad Request", body);
                     }
                 }
             }
@@ -394,8 +413,7 @@ void HttpServer::start(int port)
             if (!orderId)
             {
                 std::string body = "{\"error\":\"invalid order id\"}";
-                std::string response = makeJsonResponse(400, "Bad Request", body);
-                send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                sendTimedResponse(400, "Bad Request", body);
             }
             else if (method == "GET")
             {
@@ -403,8 +421,7 @@ void HttpServer::start(int port)
                 if (!order)
                 {
                     std::string body = "{\"error\":\"order not found\"}";
-                    std::string response = makeJsonResponse(404, "Not Found", body);
-                    send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                    sendTimedResponse(404, "Not Found", body);
                 }
                 else
                 {
@@ -418,8 +435,7 @@ void HttpServer::start(int port)
                     body << "\"timestamp\":" << order->getTimestamp();
                     body << "}";
 
-                    std::string response = makeJsonResponse(200, "OK", body.str());
-                    send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                    sendTimedResponse(200, "OK", body.str());
                 }
             }
             else if (method == "DELETE")
@@ -433,22 +449,19 @@ void HttpServer::start(int port)
                     body << "\"order_id\":" << *orderId;
                     body << "}";
 
-                    std::string response = makeJsonResponse(200, "OK", body.str());
-                    send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                    sendTimedResponse(200, "OK", body.str());
                 }
                 catch (const std::exception &)
                 {
                     std::string body = "{\"error\":\"order not found\"}";
-                    std::string response = makeJsonResponse(404, "Not Found", body);
-                    send(client, response.c_str(), static_cast<int>(response.size()), 0);
+                    sendTimedResponse(404, "Not Found", body);
                 }
             }
         }
         else
         {
             std::string body = "{\"error\":\"route not found\"}";
-            std::string response = makeJsonResponse(404, "Not Found", body);
-            send(client, response.c_str(), static_cast<int>(response.size()), 0);
+            sendTimedResponse(404, "Not Found", body);
         }
 
         closesocket(client);
